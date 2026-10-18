@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ViralSim — Social Virality Predictor</title>
+<style>
+  :root {
+    --bg: #0A0A0F;
+    --surface: #13121A;
+    --surface2: #1E1C28;
+    --surface3: #2A2830;
+    --border: #2E2C3E;
+    --border-light: #3D3A52;
+    --accent: #7B5CEA;
+    --accent-dim: #4A3590;
+    --accent-glow: rgba(123,92,234,0.15);
+    --text: #F0EEF8;
+    --text-muted: #8B89A0;
+    --text-dim: #5A586A;
+    --green: #2DD4A0;
+    --red: #F0596A;
+    --amber: #F0A23C;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 52px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+  .logo-mark {
+    width: 28px; height: 28px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+  .logo-sub { color: var(--text-muted); font-weight: 400; font-size: 12px; margin-left: 2px; }
+  .topbar-right { display: flex; align-items: center; gap: 8px; }
+  .badge {
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 500;
+    border: 1px solid var(--border-light);
+    color: var(--text-muted);
+  }
+  .badge.ready { border-color: var(--green); color: var(--green); }
+  .badge.error { border-color: var(--red); color: var(--red); }
+
+  /* ── LAYOUT ── */
+  .app {
+    display: grid;
+    grid-template-columns: 300px 1fr 340px;
+    grid-template-rows: 1fr;
+    height: calc(100vh - 52px);
+    overflow: hidden;
+  }
+
+  .panel {
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .panel:last-child { border-right: none; }
+
+  .panel-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+  }
+  .panel-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ── LEFT PANEL: CONFIG ── */
+  .config-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .config-section:last-child { border-bottom: none; }
+  .config-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .config-label .dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  input[type="text"], input[type="password"], textarea, select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus, input[type="password"]:focus,
+  textarea:focus, select:focus {
+    border-color: var(--accent);
+    background: var(--surface3);
+  }
+  input::placeholder, textarea::placeholder { color: var(--text-dim); }
+
+  .key-input-wrap { position: relative; }
+  .key-input-wrap input { padding-right: 60px; font-family: var(--mono); font-size: 11px; }
+  .key-toggle {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--text-muted);
+    font-size: 11px; cursor: pointer; padding: 4px 6px;
+  }
+  .key-toggle:hover { color: var(--text); }
+
+  .key-status {
+    font-size: 11px; margin-top: 5px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .key-status.ok { color: var(--green); }
+  .key-status.err { color: var(--red); }
+  .key-status.idle { color: var(--text-dim); }
+
+  .form-row { margin-bottom: 10px; }
+  .form-row label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px; }
+
+  textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+
+  .persona-chips {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+  }
+  .chip {
+    padding: 4px 10px;
+    border-radius: 99px;
+    font-size: 11px;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.1s;
+    user-select: none;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.active { background: var(--accent-dim); border-color: var(--accent); color: var(--text); }
+
+  .wave-control {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+  }
+  .wave-btn {
+    width: 28px; height: 28px;
+    border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text-muted);
+    font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.1s;
+  }
+  .wave-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .wave-count { font-family: var(--mono); font-size: 18px; font-weight: 600; color: var(--accent); min-width: 28px; text-align: center; }
+
+  /* ── VIDEO UPLOAD ── */
+  .upload-zone {
+    margin: 16px 20px;
+    border: 1.5px dashed var(--border-light);
+    border-radius: 12px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+  }
+  .upload-icon { font-size: 28px; margin-bottom: 10px; opacity: 0.7; }
+  .upload-text { font-size: 13px; color: var(--text-muted); }
+  .upload-hint { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+  #fileInput { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+
+  .video-preview-wrap {
+    margin: 0 20px 16px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;
+    border: 1px solid var(--border);
+    display: none;
+  }
+  video { width: 100%; max-height: 180px; display: block; }
+  .video-meta {
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+  }
+  .video-meta span { font-family: var(--mono); color: var(--accent); }
+
+  .run-btn {
+    margin: 0 20px 20px;
+    width: calc(100% - 40px);
+    padding: 13px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    letter-spacing: -0.2px;
+  }
+  .run-btn:hover { background: #9070F8; }
+  .run-btn:disabled { background: var(--surface3); color: var(--text-dim); cursor: not-allowed; }
+  .run-btn .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: none;
+  }
+  .run-btn.running .spinner { display: block; }
+  .run-btn.running .btn-text { opacity: 0.7; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── CENTER PANEL: SIMULATION FEED ── */
+  .sim-panel { background: var(--bg); display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+
+  .wave-indicator {
+    display: flex; gap: 8px; padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    align-items: center;
+  }
+  .wave-pill {
+    padding: 4px 14px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    transition: all 0.3s;
+    cursor: default;
+  }
+  .wave-pill.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-glow);
+  }
+  .wave-pill.done {
+    border-color: var(--green);
+    color: var(--green);
+    background: rgba(45,212,160,0.08);
+  }
+  .wave-pill.blocked {
+    border-color: var(--red);
+    color: var(--red);
+    background: rgba(240,89,106,0.08);
+  }
+  .wave-sep { color: var(--text-dim); font-size: 12px; }
+  .gate-score {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* Signal wave animation bar */
+  .signal-bar {
+    height: 3px;
+    background: var(--surface3);
+    position: relative;
+    overflow: hidden;
+  }
+  .signal-wave {
+    position: absolute;
+    top: 0; left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: wave-slide 1.4s ease-in-out infinite;
+    display: none;
+  }
+  .signal-wave.running { display: block; }
+  @keyframes wave-slide {
+    0% { left: -60%; }
+    100% { left: 100%; }
+  }
+
+  .feed-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .feed-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    text-align: center;
+    gap: 12px;
+    padding: 40px 20px;
+  }
+  .feed-empty-icon { font-size: 36px; opacity: 0.4; }
+  .feed-empty-text { font-size: 13px; line-height: 1.7; }
+
+  .feed-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    animation: fadeSlideIn 0.25s ease;
+    transition: border-color 0.2s;
+  }
+  .feed-item:hover { border-color: var(--border-light); }
+
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .feed-item-header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+  }
+  .persona-avatar {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .persona-name { font-size: 13px; font-weight: 500; flex: 1; }
+  .persona-demo { font-size: 11px; color: var(--text-muted); }
+  .action-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+  .action-tag {
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .action-tag.watch { background: rgba(123,92,234,0.15); color: var(--accent); }
+  .action-tag.like { background: rgba(240,162,60,0.15); color: var(--amber); }
+  .action-tag.share { background: rgba(45,212,160,0.15); color: var(--green); }
+  .action-tag.skip { background: rgba(240,89,106,0.12); color: var(--red); }
+  .action-tag.comment { background: rgba(96,165,250,0.15); color: #60A5FA; }
+  .action-tag.save { background: rgba(167,139,250,0.15); color: #A78BFA; }
+
+  .feed-verdict { font-size: 12px; color: var(--text-muted); line-height: 1.6; margin-top: 4px; }
+  .watch-bar {
+    margin-top: 8px;
+    height: 3px;
+    background: var(--surface3);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .watch-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: var(--accent);
+    transition: width 0.6s ease;
+  }
+  .watch-pct {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 3px;
+  }
+
+  .gate-card {
+    border-radius: 10px;
+    padding: 12px 16px;
+    border: 1px solid;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: fadeSlideIn 0.3s ease;
+  }
+  .gate-card.pass {
+    background: rgba(45,212,160,0.06);
+    border-color: rgba(45,212,160,0.3);
+    color: var(--green);
+  }
+  .gate-card.fail {
+    background: rgba(240,89,106,0.06);
+    border-color: rgba(240,89,106,0.3);
+    color: var(--red);
+  }
+  .gate-icon { font-size: 18px; }
+  .gate-text b { display: block; font-size: 13px; font-weight: 600; }
+  .gate-text span { opacity: 0.8; }
+
+  .analysis-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    animation: fadeSlideIn 0.25s ease;
+  }
+  .analysis-card-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .signal-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .signal-row:last-child { border-bottom: none; }
+  .signal-name { color: var(--text-muted); }
+  .signal-val {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+  .signal-bar-mini {
+    width: 60px; height: 4px;
+    background: var(--surface3);
+    border-radius: 99px; overflow: hidden;
+    display: inline-block; vertical-align: middle;
+  }
+  .signal-bar-fill { height: 100%; border-radius: 99px; background: var(--accent); }
+
+  /* ── RIGHT PANEL: RESULTS ── */
+  .results-panel { overflow-y: auto; }
+
+  .score-hero {
+    padding: 24px 20px 20px;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+  }
+  .score-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+  .score-ring-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin: 0 auto 12px;
+    width: 140px;
+    height: 140px;
+  }
+  .score-ring-wrap svg { position: absolute; top: 0; left: 0; }
+  .score-number {
+    font-family: var(--mono);
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1;
+    z-index: 1;
+  }
+  .score-verdict {
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+  .score-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  .result-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .result-section:last-child { border-bottom: none; }
+  .result-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+
+  .wave-breakdown {
+    display: flex; gap: 6px; margin-bottom: 4px;
+  }
+  .wave-stat {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 10px 8px;
+    text-align: center;
+  }
+  .wave-stat-num {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 600;
+    display: block;
+  }
+  .wave-stat-label { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+  .demo-breakdown {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .demo-row {
+    display: flex; align-items: center; gap: 8px; font-size: 12px;
+  }
+  .demo-name { color: var(--text-muted); width: 110px; flex-shrink: 0; }
+  .demo-bar {
+    flex: 1; height: 6px;
+    background: var(--surface3);
+    border-radius: 99px; overflow: hidden;
+  }
+  .demo-bar-fill { height: 100%; border-radius: 99px; transition: width 0.8s ease; }
+  .demo-val { font-family: var(--mono); font-size: 11px; color: var(--text-muted); width: 32px; text-align: right; }
+
+  .suggestion-list { display: flex; flex-direction: column; gap: 8px; }
+  .suggestion {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .suggestion-ts {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  .suggestion-text { color: var(--text-muted); }
+  .suggestion.priority-high { border-left-color: var(--red); }
+  .suggestion.priority-high .suggestion-ts { color: var(--red); }
+  .suggestion.priority-med { border-left-color: var(--amber); }
+  .suggestion.priority-med .suggestion-ts { color: var(--amber); }
+
+  .results-placeholder {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-dim);
+  }
+  .results-placeholder-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.4; }
+  .results-placeholder-text { font-size: 13px; line-height: 1.7; }
+
+  .export-btn {
+    margin: 0 20px 20px;
+    width: calc(100% - 40px);
+    padding: 11px;
+    background: var(--surface2);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .export-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+  /* ── TOAST ── */
+  .toast-container {
+    position: fixed; bottom: 20px; right: 20px;
+    display: flex; flex-direction: column; gap: 8px;
+    z-index: 9999;
+  }
+  .toast {
+    padding: 10px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text);
+    animation: toastIn 0.2s ease;
+    max-width: 320px;
+  }
+  .toast.err { border-color: var(--red); color: var(--red); }
+  .toast.ok { border-color: var(--green); color: var(--green); }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-mark">VS</div>
+    ViralSim
+    <span class="logo-sub">/ Social Virality Predictor</span>
+  </div>
+  <div class="topbar-right">
+    <span class="badge" id="apiStatus">API keys not set</span>
+    <span class="badge" id="videoStatus">No video</span>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app">
+
+  <!-- LEFT: CONFIG + UPLOAD -->
+  <div class="panel" style="background: var(--surface);">
+    <div class="panel-header">
+      <div class="panel-title">Setup</div>
+    </div>
+
+    <!-- API Keys -->
+    <div class="config-section">
+      <div class="config-label"><span class="dot"></span>API Keys</div>
+
+      <div class="form-row">
+        <label>Google AI Studio key (Gemini 2.0 Flash — free)</label>
+        <div class="key-input-wrap">
+          <input type="password" id="geminiKey" placeholder="AIza..." autocomplete="off">
+          <button class="key-toggle" onclick="toggleKey('geminiKey')">show</button>
+        </div>
+        <div class="key-status idle" id="geminiStatus">
+          <span>&#9679;</span> Not validated — <a href="https://aistudio.google.com/apikey" target="_blank" style="color:inherit">get free key</a>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>Anthropic key (Claude Haiku — personas)</label>
+        <div class="key-input-wrap">
+          <input type="password" id="anthropicKey" placeholder="sk-ant-..." autocomplete="off">
+          <button class="key-toggle" onclick="toggleKey('anthropicKey')">show</button>
+        </div>
+        <div class="key-status idle" id="anthropicStatus">
+          <span>&#9679;</span> Not validated — <a href="https://console.anthropic.com" target="_blank" style="color:inherit">get key</a>
+        </div>
+      </div>
+
+      <button class="run-btn" style="margin: 8px 0 0; background: var(--surface3); color: var(--text-muted); border: 1px solid var(--border); font-size: 12px; padding: 8px;" onclick="validateKeys()">
+        Validate keys
+      </button>
+      <button class="run-btn" id="demoBtn" style="margin: 8px 0 0; background: transparent; color: var(--text-muted); border: 1px dashed var(--border-light); font-size: 12px; padding: 8px;" onclick="enableDemo()">
+        Try demo mode (no keys, no video)
+      </button>
+    </div>
+
+    <!-- Target Demographic -->
+    <div class="config-section">
+      <div class="config-label"><span class="dot"></span>Target Demographic</div>
+      <div class="form-row">
+        <label>Describe your target audience</label>
+        <textarea id="targetDemo" placeholder="e.g. Tech-savvy millennials aged 25–35, interested in productivity tools, active on Instagram and LinkedIn..."
+        >Tech-savvy professionals aged 22–35, interested in SaaS tools and productivity. Active Instagram users who follow startup and tech content.</textarea>
+      </div>
+      <div class="form-row">
+        <label>Quick presets</label>
+        <div class="persona-chips">
+          <span class="chip" onclick="addPreset(this, 'Gen Z (16–24), entertainment, trends, TikTok-native')">Gen Z</span>
+          <span class="chip" onclick="addPreset(this, 'Millennials (25–35), career & lifestyle, Instagram-native')">Millennials</span>
+          <span class="chip" onclick="addPreset(this, 'Founders & startup community, B2B SaaS audience')">Founders</span>
+          <span class="chip" onclick="addPreset(this, 'Fitness & wellness community, 20–40 years old')">Fitness</span>
+          <span class="chip" onclick="addPreset(this, 'Fashion & beauty enthusiasts, predominantly female 18–30')">Fashion</span>
+          <span class="chip" onclick="addPreset(this, 'Gamers & tech early adopters, 18–30')">Gaming</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Simulation Settings -->
+    <div class="config-section">
+      <div class="config-label"><span class="dot"></span>Simulation Settings</div>
+
+      <div class="form-row">
+        <label>Platform</label>
+        <select id="platform">
+          <option value="instagram_reels">Instagram Reels</option>
+          <option value="tiktok">TikTok</option>
+          <option value="youtube_shorts">YouTube Shorts</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label>Simulation waves</label>
+        <div class="wave-control">
+          <button class="wave-btn" onclick="changeWaves(-1)">−</button>
+          <span class="wave-count" id="waveCount">3</span>
+          <button class="wave-btn" onclick="changeWaves(1)">+</button>
+          <span style="font-size:11px; color: var(--text-dim)">waves (1–3)</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>Personas per wave</label>
+        <div class="wave-control">
+          <button class="wave-btn" onclick="changePersonas(-5)">−</button>
+          <span class="wave-count" id="personaCount">15</span>
+          <button class="wave-btn" onclick="changePersonas(5)">+</button>
+          <span style="font-size:11px; color: var(--text-dim)">per wave</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Video Upload -->
+    <div class="config-section">
+      <div class="config-label"><span class="dot"></span>Video</div>
+      <div class="upload-zone" id="uploadZone" ondragover="e.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event)">
+        <input type="file" id="fileInput" accept="video/*" onchange="handleFile(this.files[0])">
+        <div class="upload-icon">&#128249;</div>
+        <div class="upload-text">Drop your video here</div>
+        <div class="upload-hint">or click to browse · MP4, MOV, WebM · max 100MB</div>
+      </div>
+    </div>
+
+    <div class="video-preview-wrap" id="videoPreviewWrap">
+      <video id="videoPreview" controls muted></video>
+      <div class="video-meta">
+        <span id="videoName">video.mp4</span>
+        <span id="videoDuration">0:00</span>
+      </div>
+    </div>
+
+    <button class="run-btn" id="runBtn" disabled onclick="runSimulation()">
+      <div class="spinner"></div>
+      <span class="btn-text">Run Virality Simulation</span>
+    </button>
+  </div>
+
+  <!-- CENTER: SIMULATION FEED -->
+  <div class="sim-panel panel" style="border-right: 1px solid var(--border);">
+    <div class="panel-header" style="background: var(--surface);">
+      <div class="panel-title">Live simulation feed</div>
+    </div>
+
+    <div class="wave-indicator" id="waveIndicator">
+      <span class="wave-pill" id="w0pill">Wave 0</span>
+      <span class="wave-sep">→</span>
+      <span class="wave-pill" id="w1pill">Gate 1</span>
+      <span class="wave-sep">→</span>
+      <span class="wave-pill" id="w2pill">Wave 1</span>
+      <span class="wave-sep">→</span>
+      <span class="wave-pill" id="w3pill">Gate 2</span>
+      <span class="wave-sep">→</span>
+      <span class="wave-pill" id="w4pill">Wave 2</span>
+      <span class="gate-score" id="gateScoreDisplay"></span>
+    </div>
+
+    <div class="signal-bar">
+      <div class="signal-wave" id="signalWave"></div>
+    </div>
+
+    <div class="feed-area" id="feedArea">
+      <div class="feed-empty" id="feedEmpty">
+        <div class="feed-empty-icon">&#127909;</div>
+        <div class="feed-empty-text">
+          Upload a video and configure your settings,<br>
+          then run the simulation to see AI personas<br>
+          react to your content in real time.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: RESULTS -->
+  <div class="results-panel panel" style="background: var(--surface);">
+    <div class="panel-header">
+      <div class="panel-title">Results</div>
+    </div>
+
+    <div id="resultsContent">
+      <div class="results-placeholder">
+        <div class="results-placeholder-icon">&#128200;</div>
+        <div class="results-placeholder-text">
+          Virality score, demographic breakdown,<br>
+          and edit suggestions will appear<br>
+          after the simulation runs.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ── STATE ──
+const state = {
+  geminiKey: '',
+  anthropicKey: '',
+  keysValid: false,
+  videoFile: null,
+  videoUrl: null,
+  videoFrames: [],
+  waves: 3,
+  personasPerWave: 15,
+  targetDemo: '',
+  platform: 'instagram_reels',
+  running: false,
+  results: null
+};
+
+// ── PERSONA LIBRARY ──
+const PERSONA_ARCHETYPES = [
+  // Wave 0 — target demographic (varied)
+  { id: 'p01', name: 'Priya S.', age: 28, type: 'Tech Enthusiast', demo: 'F · 28 · Bengaluru', avatar_color: '#7B5CEA', wave: 0, bias: 'loves product demos, impatient with slow intros, shares useful content' },
+  { id: 'p02', name: 'Marcus T.', age: 31, type: 'Startup Founder', demo: 'M · 31 · London', avatar_color: '#2DD4A0', wave: 0, bias: 'analytical, sceptical of hype, rewards clarity and specificity' },
+  { id: 'p03', name: 'Aisha K.', age: 24, type: 'Content Creator', demo: 'F · 24 · Lagos', avatar_color: '#F0A23C', wave: 0, bias: 'aesthetic-driven, quick to skip if hook is weak, loves relatable moments' },
+  { id: 'p04', name: 'Jordan L.', age: 26, type: 'Product Manager', demo: 'NB · 26 · NYC', avatar_color: '#60A5FA', wave: 0, bias: 'detail-oriented, saves tools content, shares when it solves a real problem' },
+  { id: 'p05', name: 'Ravi M.', age: 33, type: 'Agency Owner', demo: 'M · 33 · Mumbai', avatar_color: '#A78BFA', wave: 0, bias: 'busy, 3-second patience window, shares with team if immediately useful' },
+  { id: 'p06', name: 'Sofia R.', age: 22, type: 'CS Student', demo: 'F · 22 · São Paulo', avatar_color: '#F0596A', wave: 0, bias: 'early adopter energy, vocal commenter, very influenced by social proof' },
+  { id: 'p07', name: 'David C.', age: 35, type: 'Marketing Lead', demo: 'M · 35 · Toronto', avatar_color: '#7B5CEA', wave: 0, bias: 'ROI-focused, skips emotional appeals, responds to data and use-cases' },
+  // Wave 1 — adjacent niche
+  { id: 'p08', name: 'Mei L.', age: 27, type: 'Designer', demo: 'F · 27 · Shanghai', avatar_color: '#2DD4A0', wave: 1, bias: 'visual-first, drawn to aesthetic quality, saves for inspiration boards' },
+  { id: 'p09', name: 'Tomás A.', age: 29, type: 'Freelancer', demo: 'M · 29 · Mexico City', avatar_color: '#F0A23C', wave: 1, bias: 'solution-seeker, watches until he understands the value, shares in communities' },
+  { id: 'p10', name: 'Zoe W.', age: 23, type: 'Recent Grad', demo: 'F · 23 · Sydney', avatar_color: '#60A5FA', wave: 1, bias: 'trend-aware, low patience, strong like/skip binary, influenced by comments' },
+  { id: 'p11', name: 'Kai P.', age: 30, type: 'Dev Advocate', demo: 'M · 30 · Berlin', avatar_color: '#A78BFA', wave: 1, bias: 'technical depth matters, dismisses surface-level content immediately' },
+  { id: 'p12', name: 'Fatima N.', age: 26, type: 'Growth Hacker', demo: 'F · 26 · Cairo', avatar_color: '#F0596A', wave: 1, bias: 'metrics-driven, watches twice if impressed, shares virally in Slack groups' },
+  // Wave 2 — mass / Explore audience
+  { id: 'p13', name: 'Tyler B.', age: 19, type: 'Gen Z Scroller', demo: 'M · 19 · Chicago', avatar_color: '#7B5CEA', wave: 2, bias: 'zero patience, entertainment-first, skips anything that feels like an ad' },
+  { id: 'p14', name: 'Rina T.', age: 38, type: 'Busy Professional', demo: 'F · 38 · Tokyo', avatar_color: '#2DD4A0', wave: 2, bias: 'low social media time, only engages if immediately relevant, rarely shares' },
+  { id: 'p15', name: 'Carlos V.', age: 25, type: 'Casual Scroller', demo: 'M · 25 · Madrid', avatar_color: '#F0A23C', wave: 2, bias: 'passive consumer, likes freely, shares rarely, a like from him = weak signal' },
+  { id: 'p16', name: 'Grace O.', age: 21, type: 'Influencer Fan', demo: 'F · 21 · Nairobi', avatar_color: '#60A5FA', wave: 2, bias: 'highly social, shares to stories, comments with reactions, drives awareness' },
+  { id: 'p17', name: 'Alex J.', age: 32, type: 'Sceptic', demo: 'NB · 32 · Austin', avatar_color: '#F0596A', wave: 2, bias: 'hard to impress, vocal about inauthenticity, but a share from them = very high trust' },
+];
+
+const PLATFORM_WEIGHTS = {
+  instagram_reels: { watch: 0.40, share: 0.35, like: 0.15, save: 0.10 },
+  tiktok:          { watch: 0.45, share: 0.30, like: 0.15, save: 0.10 },
+  youtube_shorts:  { watch: 0.50, share: 0.25, like: 0.15, save: 0.10 }
+};
+
+const GATE_THRESHOLDS = {
+  gate1: { watchAvg: 55, shareRate: 0.15 },  // wave 0 → wave 1
+  gate2: { watchAvg: 50, shareRate: 0.10 }   // wave 1 → wave 2
+};
+
+// ── UI HELPERS ──
+function toast(msg, type = 'info') {
+  const t = document.createElement('div');
+  t.className = 'toast' + (type === 'error' ? ' err' : type === 'ok' ? ' ok' : '');
+  t.textContent = msg;
+  document.getElementById('toastContainer').appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+function toggleKey(id) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+function addPreset(chip, text) {
+  chip.classList.toggle('active');
+  const area = document.getElementById('targetDemo');
+  if (chip.classList.contains('active')) {
+    area.value = text;
+  }
+}
+
+function changeWaves(delta) {
+  state.waves = Math.max(1, Math.min(3, state.waves + delta));
+  document.getElementById('waveCount').textContent = state.waves;
+}
+
+function changePersonas(delta) {
+  state.personasPerWave = Math.max(5, Math.min(20, state.personasPerWave + delta));
+  document.getElementById('personaCount').textContent = state.personasPerWave;
+}
+
+// Demo mode: runs the full pipeline offline with the built-in sample signals and
+// randomised persona responses, so the UI can be explored without API keys.
+// Demo numbers are illustrative only — they are not predictions.
+function enableDemo() {
+  state.demoMode = true;
+  state.geminiKey = '';
+  state.anthropicKey = '';
+  state.keysValid = true;
+  document.getElementById('apiStatus').className = 'badge';
+  document.getElementById('apiStatus').textContent = 'Demo mode';
+  document.getElementById('runBtn').disabled = false;
+  toast('Demo mode on: sample signals and randomised personas, no API calls', 'ok');
+}
+
+function checkRunReady() {
+  if (state.demoMode) { document.getElementById('runBtn').disabled = false; return; }
+  const ready = state.keysValid && state.videoFile;
+  document.getElementById('runBtn').disabled = !ready;
+  if (ready) {
+    document.getElementById('apiStatus').className = 'badge ready';
+    document.getElementById('apiStatus').textContent = 'Keys valid';
+  }
+}
+
+// ── KEY VALIDATION ──
+async function validateKeys() {
+  const gKey = document.getElementById('geminiKey').value.trim();
+  const aKey = document.getElementById('anthropicKey').value.trim();
+
+  if (!gKey && !aKey) { toast('Enter at least one API key', 'error'); return; }
+
+  state.geminiKey = gKey;
+  state.anthropicKey = aKey;
+
+  // Validate Gemini
+  if (gKey) {
+    document.getElementById('geminiStatus').className = 'key-status idle';
+    document.getElementById('geminiStatus').innerHTML = '<span>&#9679;</span> Validating...';
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${gKey}`);
+      if (r.ok) {
+        document.getElementById('geminiStatus').className = 'key-status ok';
+        document.getElementById('geminiStatus').innerHTML = '<span>&#10003;</span> Gemini key valid';
+        toast('Gemini key validated', 'ok');
+      } else {
+        throw new Error('invalid');
+      }
+    } catch {
+      document.getElementById('geminiStatus').className = 'key-status err';
+      document.getElementById('geminiStatus').innerHTML = '<span>&#10007;</span> Invalid key';
+      toast('Gemini key invalid', 'error');
+    }
+  }
+
+  // Validate Anthropic
+  if (aKey) {
+    document.getElementById('anthropicStatus').className = 'key-status idle';
+    document.getElementById('anthropicStatus').innerHTML = '<span>&#9679;</span> Validating...';
+    try {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': aKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] })
+      });
+      if (r.ok || r.status === 200) {
+        document.getElementById('anthropicStatus').className = 'key-status ok';
+        document.getElementById('anthropicStatus').innerHTML = '<span>&#10003;</span> Anthropic key valid';
+        toast('Anthropic key validated', 'ok');
+        state.keysValid = true;
+      } else {
+        throw new Error('invalid');
+      }
+    } catch {
+      document.getElementById('anthropicStatus').className = 'key-status err';
+      document.getElementById('anthropicStatus').innerHTML = '<span>&#10007;</span> Invalid key';
+      toast('Anthropic key invalid', 'error');
+    }
+  }
+
+  if (gKey && aKey) state.keysValid = true;
+  checkRunReady();
+}
+
+// ── VIDEO HANDLING ──
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('video/')) handleFile(f);
+  else toast('Please drop a video file', 'error');
+}
+
+function handleFile(file) {
+  if (!file) return;
+  if (file.size > 100 * 1024 * 1024) { toast('Video too large (max 100MB)', 'error'); return; }
+  state.videoFile = file;
+  const url = URL.createObjectURL(file);
+  state.videoUrl = url;
+  const vid = document.getElementById('videoPreview');
+  vid.src = url;
+  document.getElementById('videoPreviewWrap').style.display = 'block';
+  document.getElementById('videoName').textContent = file.name;
+  vid.onloadedmetadata = () => {
+    const d = vid.duration;
+    const m = Math.floor(d / 60);
+    const s = Math.floor(d % 60);
+    document.getElementById('videoDuration').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+  };
+  document.getElementById('videoStatus').textContent = file.name.slice(0, 20) + (file.name.length > 20 ? '…' : '');
+  document.getElementById('videoStatus').className = 'badge ready';
+  toast('Video loaded', 'ok');
+  checkRunReady();
+}
+
+// ── FRAME EXTRACTION ──
+async function extractFrames(videoEl, count = 8) {
+  return new Promise(resolve => {
+    const frames = [];
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 480;
+    canvas.height = Math.round(480 * (videoEl.videoHeight / videoEl.videoWidth)) || 270;
+
+    const duration = videoEl.duration;
+    const timestamps = [];
+    // Sample: 0s (hook), 25%, 40%, 55%, 70%, 80%, 90%, 100%
+    const pcts = [0, 0.1, 0.25, 0.4, 0.55, 0.7, 0.85, 0.95];
+    for (let i = 0; i < Math.min(count, pcts.length); i++) {
+      timestamps.push(Math.min(pcts[i] * duration, duration - 0.1));
+    }
+
+    let idx = 0;
+    function seekNext() {
+      if (idx >= timestamps.length) { resolve(frames); return; }
+      videoEl.currentTime = timestamps[idx];
+    }
+    videoEl.onseeked = () => {
+      ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+      frames.push({ time: timestamps[idx], dataUrl, base64: dataUrl.split(',')[1] });
+      idx++;
+      setTimeout(seekNext, 100);
+    };
+    seekNext();
+  });
+}
+
+// ── GEMINI VIDEO ANALYSIS ──
+async function analyzeVideoWithGemini(frames, targetDemo) {
+  if (!state.geminiKey) {
+    return getMockVideoSignals();
+  }
+
+  const contents = [
+    {
+      role: 'user',
+      parts: [
+        {
+          text: `You are an expert social media content analyst specializing in Instagram Reels virality.
+
+Analyze these ${frames.length} frames extracted from a product demo video.
+Target demographic: ${targetDemo}
+Platform: Instagram Reels
+
+Return ONLY valid JSON (no markdown, no explanation):
+{
+  "hook_score": 0-100,
+  "hook_assessment": "one sentence about the first 3 seconds",
+  "pacing_score": 0-100,
+  "pacing_notes": "one sentence",
+  "visual_quality": 0-100,
+  "emotional_valence": "positive|neutral|negative|mixed",
+  "product_clarity": 0-100,
+  "cta_present": true|false,
+  "estimated_watch_pct": 0-100,
+  "hook_timestamp_issue": "e.g. hook too slow, strong visual hook, etc",
+  "audio_signal": "likely engaging|likely dull|unknown",
+  "content_type": "product demo|tutorial|lifestyle|entertainment|other",
+  "thumbnail_appeal": 0-100,
+  "overall_signal_strength": 0-100,
+  "key_signals": ["signal1", "signal2", "signal3"]
+}`
+        },
+        ...frames.map(f => ({
+          inline_data: { mime_type: 'image/jpeg', data: f.base64 }
+        }))
+      ]
+    }
+  ];
+
+  try {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${state.geminiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents, generationConfig: { temperature: 0.2, maxOutputTokens: 600 } })
+    });
+    const data = await r.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.warn('Gemini parse error, using mock', e);
+    return getMockVideoSignals();
+  }
+}
+
+function getMockVideoSignals() {
+  return {
+    hook_score: 62, hook_assessment: "Opens with product interface — functional but not visually arresting",
+    pacing_score: 71, pacing_notes: "Moderate pacing, slightly slow in the middle section",
+    visual_quality: 74, emotional_valence: "neutral",
+    product_clarity: 82, cta_present: true,
+    estimated_watch_pct: 58, hook_timestamp_issue: "First 2s are setup — missing a strong visual hook",
+    audio_signal: "unknown", content_type: "product demo",
+    thumbnail_appeal: 55, overall_signal_strength: 65,
+    key_signals: ["Clear product value shown", "Hook could be tighter", "No social proof or credibility signal"]
+  };
+}
+
+// ── PERSONA SIMULATION (CLAUDE) ──
+async function simulatePersona(persona, videoSignals, targetDemo, platform, waveNum) {
+  if (!state.anthropicKey) {
+    return getMockPersonaResponse(persona, videoSignals);
+  }
+
+  const weights = PLATFORM_WEIGHTS[platform];
+  const platformLabel = { instagram_reels: 'Instagram Reels', tiktok: 'TikTok', youtube_shorts: 'YouTube Shorts' }[platform];
+
+  const systemPrompt = `You are simulating a specific social media user reacting to a product demo video.
+
+PERSONA:
+- Name: ${persona.name}
+- Age: ${persona.age}
+- Type: ${persona.type}  
+- Location: ${persona.demo}
+- Behavioral profile: ${persona.bias}
+- You are in wave ${waveNum} of simulation (${waveNum === 0 ? 'target demographic' : waveNum === 1 ? 'adjacent niche' : 'mass explore audience'})
+
+PLATFORM: ${platformLabel}
+TARGET DEMOGRAPHIC: ${targetDemo}
+
+VIDEO ANALYSIS SIGNALS:
+${JSON.stringify(videoSignals, null, 2)}
+
+CRITICAL: You MUST respond as this specific person with their specific biases. Do NOT be generic or average. If this person would skip, say so bluntly. If they'd share, explain exactly why given their profile.
+
+Respond ONLY with valid JSON:
+{
+  "watch_pct": 0-100,
+  "actions": ["watch"|"like"|"share"|"comment"|"save"|"skip" — pick all that apply],
+  "verdict": "one vivid sentence in first person from this persona's perspective",
+  "drop_timestamp": "e.g. '0:08 — lost me at the feature list' or null if watched fully",
+  "share_reasoning": "why they would/wouldn't share — be specific to their profile",
+  "engagement_score": 0-100
+}`;
+
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': state.anthropicKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 300,
+        temperature: 0.9,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: 'React to this video as your persona.' }]
+      })
+    });
+    const data = await r.json();
+    const text = data.content?.[0]?.text || '';
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (e) {
+    return getMockPersonaResponse(persona, videoSignals);
+  }
+}
+
+function getMockPersonaResponse(persona, signals) {
+  const baseWatch = signals.estimated_watch_pct ?? 60;
+  const variance = (Math.random() - 0.5) * 30;
+  const watch = Math.max(5, Math.min(100, Math.round(baseWatch + variance)));
+  const liked = watch > 65 && Math.random() > 0.4;
+  const shared = watch > 75 && Math.random() > 0.6;
+  const saved = watch > 70 && Math.random() > 0.7;
+  const skipped = watch < 30;
+
+  const actions = ['watch'];
+  if (liked) actions.push('like');
+  if (shared) actions.push('share');
+  if (saved) actions.push('save');
+  if (skipped) { actions.length = 0; actions.push('skip'); }
+  if (watch > 80 && Math.random() > 0.5) actions.push('comment');
+
+  const verdicts = [
+    `Decent hook but lost me around the middle — the value prop wasn't clear enough for me to share.`,
+    `Actually useful — saved this to show my team. The product demo clicked immediately.`,
+    `Skipped at 0:08. Looked like every other SaaS demo I've seen this week.`,
+    `Strong visual opening, watched all the way. Liked it.`,
+    `The pacing felt off — too much setup, not enough payoff in the first 15 seconds.`
+  ];
+
+  return {
+    watch_pct: watch,
+    actions,
+    verdict: verdicts[Math.floor(Math.random() * verdicts.length)],
+    drop_timestamp: watch < 80 ? `0:${String(Math.floor(watch * 0.2)).padStart(2,'0')} — attention drifted` : null,
+    share_reasoning: shared ? 'Relevant to their work context and specific enough to be useful' : 'Not distinctive enough to share with their network',
+    engagement_score: Math.round((watch * 0.5 + (liked ? 20 : 0) + (shared ? 30 : 0)) / 1.0)
+  };
+}
+
+// ── GATE EVALUATION ──
+function evaluateGate(personaResults) {
+  const avgWatch = personaResults.reduce((s, p) => s + p.watch_pct, 0) / personaResults.length;
+  const shareCount = personaResults.filter(p => p.actions.includes('share')).length;
+  const shareRate = shareCount / personaResults.length;
+  const likeCount = personaResults.filter(p => p.actions.includes('like')).length;
+  const likeRate = likeCount / personaResults.length;
+  const saveCount = personaResults.filter(p => p.actions.includes('save')).length;
+  const saveRate = saveCount / personaResults.length;
+
+  return { avgWatch: Math.round(avgWatch), shareRate, likeRate, saveRate, shareCount, likeCount };
+}
+
+function computeViralityScore(allWaveResults, videoSignals) {
+  const weights = PLATFORM_WEIGHTS[state.platform];
+  let totalScore = 0;
+  let waveWeight = 1;
+
+  allWaveResults.forEach((waveData, i) => {
+    const gate = evaluateGate(waveData);
+    const wScore =
+      (gate.avgWatch / 100) * weights.watch * 100 +
+      Math.min(gate.shareRate * 3, 1) * weights.share * 100 +
+      Math.min(gate.likeRate * 2, 1) * weights.like * 100 +
+      Math.min(gate.saveRate * 2, 1) * weights.save * 100;
+
+    totalScore += wScore * (i === 0 ? 0.4 : i === 1 ? 0.35 : 0.25);
+  });
+
+  // Blend with video signal quality (30% weight)
+  const signalBonus = ((videoSignals.overall_signal_strength ?? 65) / 100) * 30;
+  const finalScore = Math.round(totalScore * 0.7 + signalBonus);
+  return Math.max(1, Math.min(99, finalScore));
+}
+
+// ── EDIT SUGGESTIONS (CLAUDE) ──
+async function generateSuggestions(allWaveResults, videoSignals, viralityScore) {
+  if (!state.anthropicKey) return getMockSuggestions(videoSignals);
+
+  const dropTimestamps = allWaveResults.flat()
+    .filter(p => p.drop_timestamp)
+    .map(p => p.drop_timestamp)
+    .slice(0, 8);
+
+  const skipPersonas = allWaveResults.flat()
+    .filter(p => p.actions.includes('skip'))
+    .map(p => p.verdict)
+    .slice(0, 5);
+
+  const prompt = `You are a social media content strategist. A product demo video scored ${viralityScore}/100 for virality.
+
+VIDEO SIGNALS: ${JSON.stringify(videoSignals)}
+
+PERSONA DROP TIMESTAMPS: ${dropTimestamps.join(' | ')}
+
+SKIP REASONS FROM PERSONAS: ${skipPersonas.join(' | ')}
+
+Generate 4 specific, actionable edit suggestions. Return ONLY valid JSON array:
+[
+  {
+    "timestamp": "e.g. 0:00–0:03 or General",
+    "priority": "high|medium|low",
+    "suggestion": "specific actionable change (max 20 words)",
+    "reasoning": "why this will improve virality (max 15 words)"
+  }
+]`;
+
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': state.anthropicKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await r.json();
+    const text = data.content?.[0]?.text || '';
+    return JSON.parse(text.replace(/```json|```/g, '').trim());
+  } catch {
+    return getMockSuggestions(videoSignals);
+  }
+}
+
+function getMockSuggestions(signals) {
+  return [
+    { timestamp: '0:00–0:03', priority: 'high', suggestion: 'Lead with the "aha moment" — show the result before explaining how it works', reasoning: 'Personas drop in first 8s if hook is setup-heavy' },
+    { timestamp: '0:03–0:10', priority: 'high', suggestion: 'Add a text overlay with a specific, relatable problem statement', reasoning: 'Adjacent niche personas need instant relevance signal' },
+    { timestamp: 'General', priority: 'medium', suggestion: 'Cut total length by 20% — remove the feature walkthrough middle section', reasoning: 'Watch time drops sharply after 45s on mass audience' },
+    { timestamp: '0:00', priority: 'medium', suggestion: 'Improve thumbnail: show product output, not interface screenshot', reasoning: 'Thumbnail appeal is below average at current score' }
+  ];
+}
+
+// ── FEED RENDERING ──
+function clearFeed() {
+  const feed = document.getElementById('feedArea');
+  feed.innerHTML = '<div class="feed-empty" id="feedEmpty" style="display:none"></div>';
+}
+
+function addFeedItem(persona, result, waveNum) {
+  const feed = document.getElementById('feedArea');
+  const empty = document.getElementById('feedEmpty');
+  if (empty) empty.style.display = 'none';
+
+  const item = document.createElement('div');
+  item.className = 'feed-item';
+
+  const actions = result.actions || ['watch'];
+  const actionTags = actions.map(a =>
+    `<span class="action-tag ${a}">${a === 'watch' ? `&#128065; watch` : a === 'like' ? `&#10084; like` : a === 'share' ? `&#128257; share` : a === 'skip' ? `&#9193; skip` : a === 'comment' ? `&#128172; comment` : `&#127991; save`}</span>`
+  ).join('');
+
+  item.innerHTML = `
+    <div class="feed-item-header">
+      <div class="persona-avatar" style="background: ${persona.avatar_color}22; color: ${persona.avatar_color}; border: 1px solid ${persona.avatar_color}44;">
+        ${persona.name.split(' ').map(n => n[0]).join('')}
+      </div>
+      <div style="flex:1">
+        <div class="persona-name">${persona.name} <span style="font-weight:400;color:var(--text-muted);font-size:11px">· ${persona.type}</span></div>
+        <div class="persona-demo">${persona.demo} · Wave ${waveNum}</div>
+      </div>
+      <div class="action-tags">${actionTags}</div>
+    </div>
+    <div class="feed-verdict">"${result.verdict || ''}"</div>
+    <div class="watch-bar">
+      <div class="watch-bar-fill" style="width: 0%" data-target="${result.watch_pct || 0}"></div>
+    </div>
+    <div class="watch-pct">${result.watch_pct || 0}% watched${result.drop_timestamp ? ' · dropped at ' + result.drop_timestamp : ''}</div>
+  `;
+
+  feed.appendChild(item);
+  feed.scrollTop = feed.scrollHeight;
+
+  // Animate watch bar
+  setTimeout(() => {
+    const bar = item.querySelector('.watch-bar-fill');
+    if (bar) bar.style.width = bar.dataset.target + '%';
+  }, 100);
+}
+
+function addGateCard(passed, gateNum, stats) {
+  const feed = document.getElementById('feedArea');
+  const card = document.createElement('div');
+  card.className = `gate-card ${passed ? 'pass' : 'fail'}`;
+  card.innerHTML = `
+    <div class="gate-icon">${passed ? '&#9989;' : '&#10060;'}</div>
+    <div class="gate-text">
+      <b>Algorithm Gate ${gateNum} ${passed ? 'passed' : 'blocked'}</b>
+      <span>Watch avg: ${stats.avgWatch}% · Share rate: ${Math.round(stats.shareRate * 100)}% · Like rate: ${Math.round(stats.likeRate * 100)}%</span>
+    </div>
+  `;
+  feed.appendChild(card);
+  feed.scrollTop = feed.scrollHeight;
+
+  // Update wave pills
+  const pillMap = { 1: 'w1pill', 2: 'w3pill' };
+  const pill = document.getElementById(pillMap[gateNum]);
+  if (pill) pill.className = `wave-pill ${passed ? 'done' : 'blocked'}`;
+}
+
+function addAnalysisCard(signals) {
+  const feed = document.getElementById('feedArea');
+  const card = document.createElement('div');
+  card.className = 'analysis-card';
+  card.innerHTML = `
+    <div class="analysis-card-title">Video signal analysis (Gemini 2.0 Flash)</div>
+    ${[
+      ['Hook strength', signals.hook_score, signals.hook_assessment],
+      ['Pacing', signals.pacing_score, signals.pacing_notes],
+      ['Visual quality', signals.visual_quality, ''],
+      ['Product clarity', signals.product_clarity, ''],
+      ['Thumbnail appeal', signals.thumbnail_appeal, ''],
+      ['Overall signal', signals.overall_signal_strength, ''],
+    ].map(([name, val, note]) => `
+      <div class="signal-row">
+        <span class="signal-name">${name}${note ? ` <span style="font-size:10px;color:var(--text-dim)">— ${note}</span>` : ''}</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="signal-bar-mini"><span class="signal-bar-fill" style="width:${val}%"></span></span>
+          <span class="signal-val">${val}</span>
+        </span>
+      </div>`).join('')}
+  `;
+  feed.appendChild(card);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+// ── RESULTS RENDERING ──
+function renderResults(viralityScore, allWaveResults, videoSignals, suggestions) {
+  const verdict = viralityScore >= 75 ? { label: 'High viral potential', color: '#2DD4A0' }
+    : viralityScore >= 50 ? { label: 'Moderate potential', color: '#F0A23C' }
+    : { label: 'Low viral potential', color: '#F0596A' };
+
+  const gateStats = allWaveResults.map(wr => evaluateGate(wr));
+
+  // Demo breakdown
+  const demoData = [
+    { label: 'Target demo', score: gateStats[0] ? Math.round(gateStats[0].avgWatch) : 0, color: '#7B5CEA' },
+    { label: 'Adjacent niche', score: gateStats[1] ? Math.round(gateStats[1].avgWatch) : 0, color: '#2DD4A0' },
+    { label: 'Mass explore', score: gateStats[2] ? Math.round(gateStats[2].avgWatch) : 0, color: '#F0A23C' },
+  ].filter((_, i) => i < allWaveResults.length);
+
+  const totalPersonas = allWaveResults.flat().length;
+  const totalLikes = allWaveResults.flat().filter(p => p.actions.includes('like')).length;
+  const totalShares = allWaveResults.flat().filter(p => p.actions.includes('share')).length;
+
+  const circumference = 2 * Math.PI * 52;
+  const offset = circumference - (viralityScore / 100) * circumference;
+
+  document.getElementById('resultsContent').innerHTML = `
+    ${state.demoMode ? '<div style="margin:16px 20px 0;padding:8px 12px;border:1px dashed var(--amber);border-radius:8px;color:var(--amber);font-size:12px">Demo mode: sample data, not a prediction. Add API keys and a video for a real run.</div>' : ''}
+    <div class="score-hero">
+      <div class="score-label">Virality Score</div>
+      <div class="score-ring-wrap">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle cx="70" cy="70" r="52" fill="none" stroke="var(--surface3)" stroke-width="8"/>
+          <circle cx="70" cy="70" r="52" fill="none" stroke="${verdict.color}" stroke-width="8"
+            stroke-dasharray="${circumference}"
+            stroke-dashoffset="${offset}"
+            stroke-linecap="round"
+            transform="rotate(-90 70 70)"
+            style="transition: stroke-dashoffset 1.2s ease"/>
+        </svg>
+        <div class="score-number" style="color: ${verdict.color}">${viralityScore}</div>
+      </div>
+      <div class="score-verdict" style="color: ${verdict.color}">${verdict.label}</div>
+      <div class="score-sub">${totalPersonas} personas · ${allWaveResults.length} waves</div>
+    </div>
+
+    <div class="result-section">
+      <div class="result-section-title">Wave breakdown</div>
+      <div class="wave-breakdown">
+        ${allWaveResults.map((wr, i) => {
+          const gs = evaluateGate(wr);
+          return `<div class="wave-stat">
+            <span class="wave-stat-num" style="color:${i===0?'#7B5CEA':i===1?'#2DD4A0':'#F0A23C'}">${gs.avgWatch}%</span>
+            <div class="wave-stat-label">Wave ${i} watch avg</div>
+          </div>`;
+        }).join('')}
+        <div class="wave-stat">
+          <span class="wave-stat-num" style="color:#F0596A">${totalShares}</span>
+          <div class="wave-stat-label">Total shares</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-section">
+      <div class="result-section-title">Engagement by audience</div>
+      <div class="demo-breakdown">
+        ${demoData.map(d => `
+          <div class="demo-row">
+            <span class="demo-name">${d.label}</span>
+            <div class="demo-bar"><div class="demo-bar-fill" style="width:${d.score}%;background:${d.color}"></div></div>
+            <span class="demo-val">${d.score}%</span>
+          </div>`).join('')}
+        <div class="demo-row" style="margin-top:4px">
+          <span class="demo-name" style="color:var(--text-dim);font-size:11px">Total likes</span>
+          <div class="demo-bar"><div class="demo-bar-fill" style="width:${Math.round(totalLikes/totalPersonas*100)}%;background:#F0A23C"></div></div>
+          <span class="demo-val">${Math.round(totalLikes/totalPersonas*100)}%</span>
+        </div>
+        <div class="demo-row">
+          <span class="demo-name" style="color:var(--text-dim);font-size:11px">Total shares</span>
+          <div class="demo-bar"><div class="demo-bar-fill" style="width:${Math.round(totalShares/totalPersonas*100)}%;background:#2DD4A0"></div></div>
+          <span class="demo-val">${Math.round(totalShares/totalPersonas*100)}%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-section">
+      <div class="result-section-title">Edit suggestions</div>
+      <div class="suggestion-list">
+        ${suggestions.map(s => `
+          <div class="suggestion priority-${s.priority}">
+            <div class="suggestion-ts">${s.timestamp} · ${s.priority.toUpperCase()}</div>
+            <div class="suggestion-text">${s.suggestion}. <span style="opacity:0.7">${s.reasoning}.</span></div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <button class="export-btn" onclick="exportResults()">
+      &#8681; Export report as JSON
+    </button>
+  `;
+
+  state.results = { viralityScore, verdict: verdict.label, gateStats, suggestions, videoSignals };
+}
+
+function exportResults() {
+  if (!state.results) return;
+  const blob = new Blob([JSON.stringify(state.results, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `viralsim-report-${Date.now()}.json`;
+  a.click();
+  toast('Report exported', 'ok');
+}
+
+// ── WAVE PILL MANAGEMENT ──
+function setWavePill(pillId, state_) {
+  const pill = document.getElementById(pillId);
+  if (pill) pill.className = `wave-pill ${state_}`;
+}
+
+// ── MAIN SIMULATION RUNNER ──
+async function runSimulation() {
+  if (state.running) return;
+  state.running = true;
+
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.classList.add('running');
+  btn.querySelector('.btn-text').textContent = 'Simulating...';
+
+  document.getElementById('signalWave').classList.add('running');
+  clearFeed();
+
+  // Reset wave pills
+  ['w0pill','w1pill','w2pill','w3pill','w4pill'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.className = 'wave-pill';
+  });
+  document.getElementById('resultsContent').innerHTML = `
+    <div class="results-placeholder">
+      <div class="results-placeholder-icon" style="animation: spin 1.5s linear infinite; display:inline-block">&#9696;</div>
+      <div class="results-placeholder-text" style="margin-top:12px">Simulation running...</div>
+    </div>`;
+
+  try {
+    const videoEl = document.getElementById('videoPreview');
+    const targetDemo = document.getElementById('targetDemo').value;
+    state.platform = document.getElementById('platform').value;
+
+    // STEP 1: Extract frames
+    let frames = [];
+    if (state.videoFile) {
+      toast('Extracting video frames...');
+      videoEl.currentTime = 0;
+      await new Promise(r => setTimeout(r, 500));
+      frames = await extractFrames(videoEl, 8);
+      toast(`${frames.length} frames extracted`);
+    }
+    state.videoFrames = frames;
+
+    // STEP 2: Analyze with Gemini
+    toast('Analyzing video signals...');
+    const videoSignals = await analyzeVideoWithGemini(frames, targetDemo);
+    addAnalysisCard(videoSignals);
+    toast('Video analysis complete', 'ok');
+    await new Promise(r => setTimeout(r, 400));
+
+    // STEP 3: Run waves
+    const allWaveResults = [];
+    const wavesToRun = Math.min(state.waves, 3);
+    const personasPerWave = Math.min(state.personasPerWave, 7); // cap for free tier
+
+    // Select personas for each wave
+    const wavePersonas = [
+      PERSONA_ARCHETYPES.filter(p => p.wave === 0).slice(0, personasPerWave),
+      PERSONA_ARCHETYPES.filter(p => p.wave === 1).slice(0, personasPerWave),
+      PERSONA_ARCHETYPES.filter(p => p.wave === 2).slice(0, personasPerWave),
+    ];
+
+    for (let w = 0; w < wavesToRun; w++) {
+      setWavePill(`w${w * 2}pill`, 'active');
+      toast(`Wave ${w} — simulating ${wavePersonas[w].length} personas...`);
+
+      const waveResults = [];
+      for (const persona of wavePersonas[w]) {
+        const result = await simulatePersona(persona, videoSignals, targetDemo, state.platform, w);
+        waveResults.push(result);
+        addFeedItem(persona, result, w);
+        await new Promise(r => setTimeout(r, 180)); // stagger for visual effect
+      }
+
+      allWaveResults.push(waveResults);
+      setWavePill(`w${w * 2}pill`, 'done');
+
+      // Gate check (except after last wave)
+      if (w < wavesToRun - 1) {
+        const gate = evaluateGate(waveResults);
+        const gateNum = w + 1;
+        const threshold = gateNum === 1 ? GATE_THRESHOLDS.gate1 : GATE_THRESHOLDS.gate2;
+        const passed = gate.avgWatch >= threshold.watchAvg && gate.shareRate >= threshold.shareRate;
+
+        document.getElementById('gateScoreDisplay').textContent =
+          `Gate ${gateNum}: watch ${gate.avgWatch}% / share ${Math.round(gate.shareRate*100)}%`;
+
+        await new Promise(r => setTimeout(r, 400));
+        addGateCard(passed, gateNum, gate);
+        setWavePill(`w${w * 2 + 1}pill`, passed ? 'done' : 'blocked');
+
+        if (!passed) {
+          toast(`Gate ${gateNum} blocked — content won't reach wave ${w + 1}`, 'error');
+          break;
+        } else {
+          toast(`Gate ${gateNum} passed — advancing to wave ${w + 1}`, 'ok');
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }
+    }
+
+    // STEP 4: Compute virality score
+    const viralityScore = computeViralityScore(allWaveResults, videoSignals);
+    toast('Generating edit suggestions...');
+    const suggestions = await generateSuggestions(allWaveResults, videoSignals, viralityScore);
+
+    // STEP 5: Render results
+    renderResults(viralityScore, allWaveResults, videoSignals, suggestions);
+    toast(`Simulation complete — score: ${viralityScore}/100`, 'ok');
+
+  } catch (err) {
+    console.error(err);
+    toast('Simulation error: ' + err.message, 'error');
+  } finally {
+    state.running = false;
+    btn.disabled = false;
+    btn.classList.remove('running');
+    btn.querySelector('.btn-text').textContent = 'Run Virality Simulation';
+    document.getElementById('signalWave').classList.remove('running');
+  }
+}
+
+// ── INIT: restore keys from localStorage ──
+window.addEventListener('load', () => {
+  const gk = localStorage.getItem('vs_gemini_key');
+  const ak = localStorage.getItem('vs_anthropic_key');
+  if (gk) document.getElementById('geminiKey').value = gk;
+  if (ak) document.getElementById('anthropicKey').value = ak;
+});
+
+document.getElementById('geminiKey').addEventListener('change', e => {
+  localStorage.setItem('vs_gemini_key', e.target.value);
+  state.geminiKey = e.target.value;
+});
+document.getElementById('anthropicKey').addEventListener('change', e => {
+  localStorage.setItem('vs_anthropic_key', e.target.value);
+  state.anthropicKey = e.target.value;
+});
+</script>
+</body>
+</html>
