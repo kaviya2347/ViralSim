@@ -90,7 +90,6 @@ index.html               the whole app (UI, Gemini + Claude calls, scoring)
 tests/scoring.test.mjs   unit tests for the scoring logic
 docs/                    screenshots
 ```
-
 ## Author
 
 Sharan K, B.Tech Data Science, VIT Chennai
