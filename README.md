@@ -92,4 +92,4 @@ docs/                    screenshots
 ```
 ## Author
 
-Sharan K, B.Tech Data Science, VIT Chennai
+Kaviya K, B.E CSE, R.M.K Engineering College
