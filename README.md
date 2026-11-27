@@ -92,5 +92,6 @@ docs/                    screenshots
 ```
 ## Author
 
-Sharan K, B.Tech in Data Science, VIT Chennai
-Kaviya K, B.E CSE, R.M.K Engineering College
+1.Sharan K, B.Tech in Data Science, VIT Chennai
+
+2.Kaviya K, B.E CSE, R.M.K Engineering College
